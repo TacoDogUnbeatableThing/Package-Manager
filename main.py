@@ -51,4 +51,3 @@ for fileName in os.listdir(selectedPack):
 
 
 zip.close()
-#test
