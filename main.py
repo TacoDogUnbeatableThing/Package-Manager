@@ -10,6 +10,9 @@ gui.sendRoot(ROOT)
 
 OSUPATH = os.path.join(os.path.dirname(os.getenv("APPDATA")), "Local/osu!/Songs")
 
+if not os.path.exists(os.path.join(ROOT, "modfiles")):
+    os.makedirs(os.path.join("modfiles"))
+
 zip = gui.actPick()
 if zip == None: quit()
 
