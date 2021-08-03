@@ -1,3 +1,4 @@
+from typing import final
 import PySimpleGUI as sg
 import json
 import os
@@ -99,20 +100,44 @@ def actPick():
             return
 
 
-#Main window
-def mainWin():
-    #Main window
-    mainWin = sg.Window(title, [
+#Select beatmap window
+def selBeatmap(OSUPATH):
+    #Select beatmap window
+    for _, dirs, _ in os.walk(OSUPATH):
+        songs = dirs
+        break
 
+    beatWin = sg.Window(title, [
+
+        [sg.T("Please select a song")                                                           ],
+        [sg.LB(songs, size=size, key="songSelected", select_mode="LISTBOX_SELECT_MODE_SINGLE")  ],
+        [sg.I(key="folderInput", size=size), sg.FolderBrowse("Browse", size=size)               ],
+        [sg.B("Convert", size=size)                                                             ]
         
 
-    ], element_justification="c", resizable=True)
+    ], element_justification="c", resizable=True, finalize=True)
+    beatWin.bind('<Configure>', "Configure")
 
     while True:
-        e1, v1 = mainWin.read()
+        e1, v1 = beatWin.read()
+        try:
+            beatWin["songSelected"].expand(expand_x=True, expand_y=True)
+            beatWin["folderInput"].expand(expand_x=True)
+        except:
+            pass
 
 
+        if e1 == "Convert":
+            try:
+                beatWin.close()
 
-        if e1 == sg.WINDOW_CLOSED:
-            mainWin.close()
+                if v1["folderInput"] == "":
+                    return os.path.join(OSUPATH, v1['songSelected'][0])
+                else:
+                    return v1["folderInput"]
+            except:
+                pass
+
+        elif e1 == sg.WINDOW_CLOSED:
+            beatWin.close()
             return
