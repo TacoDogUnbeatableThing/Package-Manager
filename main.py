@@ -2,62 +2,95 @@ import gui
 
 import os
 import zipfile as zp
-from pydub import AudioSegment
+import json
 
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
-gui.sendRoot(ROOT)
+STRIPPIDCHARS = "_- .[]()"
+gui.sendInfo(ROOT, STRIPPIDCHARS)
 
-OSUPATH = os.path.join(os.path.dirname(os.getenv("APPDATA")), "Local/osu!/Songs")
+OSUPATH = os.path.join(os.path.dirname(os.getenv("APPDATA")), "Local\\osu!\\Songs")
 
 if not os.path.exists(os.path.join(ROOT, "modfiles")):
     os.makedirs(os.path.join("modfiles"))
 
-zip = gui.actPick()
-if zip == None: quit()
-
-'''
-zip = zp.ZipFile(f"modfiles/{v2['name']}.bmap", "w", compression=zp.ZIP_LZMA)
-with zip.open("config.json", "w") as file:
-    file.write(json.dumps(mod, indent=4).encode("utf-8"))
 
 
-with zp.ZipFile(f"modfiles/{v2['modSelected'][0]}", "r") as zip:
-    with zip.open("config.json") as file:
-        mod = json.load(file)
+zips = gui.actPick(OSUPATH)
+if zips == None: quit()
 
-'''
 
+
+
+config = {
+
+    "OSU_path": OSUPATH,
+    "game_data_path": ""
+
+}
+
+try:
+    config = json.load(open(os.path.join(ROOT, "config.json"), "rt"))
+except:
+    with open(os.path.join(ROOT, "config.json"), "wt") as file:
+        json.dump(config, file, indent=4)
+
+
+OSUPATH = config["OSU_path"]
+GAMEDATAPATH = config["game_data_path"]
 
 
 
 #Select map pack GUI goes here
-selectedPack = gui.selBeatmap(OSUPATH)
-if selectedPack == None: quit()
+bulk = False
+packs = []
+try:
+    if type(zips[1]) == list:
+        bulk = True
 
-
+        packs = zips[1]
+        zips = zips[0]
+except:
+    packs[0] = gui.selBeatmap(OSUPATH)
+    if packs[0] == None: quit()
 
 #Get the files and put them into their zip
-for fileName in os.listdir(selectedPack):
-    with open(os.path.join(OSUPATH, selectedPack, fileName), "rb") as inFile:
-        rawContents = inFile.read()
+i = 0
+for zip in zips:
+    bmFinalPath = f"USER_BEATMAPS/{os.path.splitext(os.path.basename(zip.filename))[0]}"
 
-        if ".osu" in fileName:
-            contentsList = rawContents.decode("utf-8").split("\r\n")
+    foundAudio = False
+    for fileName in os.listdir(packs[i]):
+        with open(os.path.join(OSUPATH, packs[i], fileName), "rb") as inFile:
+            rawContents = inFile.read()
 
-            for index, line in enumerate(contentsList):
-                if "AudioFilename:" in line:
-                    contentsList[index] = f"AudioFilename: USER_BEATMAPS/{os.path.splitext(os.path.basename(zip.filename))[0]}/audio.mp3"
-                    break
+            if ".osu" in fileName:
+                contentsList = rawContents.decode("utf-8").split("\r\n")
 
-            rawContents = "".join([string + "\r\n" for string in contentsList]).encode("utf-8")
+                for index, line in enumerate(contentsList):
+                    if "AudioFilename:" in line:
+                        contentsList[index] = f"AudioFilename: {bmFinalPath}/audio.mp3"
+                        break
 
-        elif ".mp3" in fileName or ".flac" in fileName or ".wav" in fileName or ".ogg" in fileName:
-            fileName = "audio.mp3"
+                rawContents = "".join([string + "\r\n" for string in contentsList]).encode("utf-8")
 
-        zip.writestr(fileName, rawContents)
+                fileName = gui.ourStrip(fileName.removesuffix(".osu")) + ".osu"
+
+            elif ".mp3" in fileName or ".flac" in fileName or ".wav" in fileName or ".ogg" in fileName:
+                if foundAudio: continue
+                
+                fileName = "audio.mp3"
+                foundAudio = True
+
+            else:
+                continue
+
+            zip.writestr(fileName, rawContents)
 
 
+    print("Converted!")
 
+    zip.extractall(os.path.join(GAMEDATAPATH, "UNBEATABLE [white label]_Data", "StreamingAssets", bmFinalPath))
+    zip.close()
 
-zip.close()
+    i += 1
