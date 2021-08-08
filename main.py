@@ -1,25 +1,44 @@
+from PySimpleGUI.PySimpleGUI import G
 import gui
 
 import os
 import zipfile as zp
 import json
+import re
+import requests
 
+
+#Code for getting all IDs, don't leave this in final build
+'''
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+
+gauth = GoogleAuth()
+gauth.LocalWebserverAuth()
+
+drive = GoogleDrive(gauth)
+
+#UB Maps file ID: 1kmDCpmWQTIZRqhcvKsqzm4oZf2z6-mp5
+fileList = drive.ListFile({'q': "'1kmDCpmWQTIZRqhcvKsqzm4oZf2z6-mp5' in parents and trashed=false"}).GetList()
+IDs = {}
+
+for file in fileList:
+    IDs[file["title"]] = file["id"]
+
+with open("IDs.json", "wt") as file:
+    json.dump(IDs, file, indent=4)
+
+quit()
+'''
+
+#IDs id: 1mdqjkS2JKSpTmDMC-qp6wpuFgvMAvh1N
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 STRIPPIDCHARS = "_- .[]()"
-gui.sendInfo(ROOT, STRIPPIDCHARS)
-
 OSUPATH = os.path.join(os.path.dirname(os.getenv("APPDATA")), "Local\\osu!\\Songs")
 
 if not os.path.exists(os.path.join(ROOT, "modfiles")):
     os.makedirs(os.path.join("modfiles"))
-
-
-
-zips = gui.actPick(OSUPATH)
-if zips == None: quit()
-
-
 
 
 config = {
@@ -41,31 +60,49 @@ GAMEDATAPATH = config["game_data_path"]
 
 
 
-#Select map pack GUI goes here
-bulk = False
-packs = []
-try:
-    if type(zips[1]) == list:
-        bulk = True
 
-        packs = zips[1]
-        zips = zips[0]
+
+def extractAll():
+    for path, _, files in os.walk(os.path.join(ROOT, "modfiles")):
+        for file in files:
+            with zp.ZipFile(os.path.join(path, file), "r") as zip:
+                zip.extractall(os.path.join(GAMEDATAPATH, "UNBEATABLE [white label]_Data", "StreamingAssets", "USER_BEATMAPS", os.path.splitext(file)[0]))
+
+
+
+
+
+gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH)
+
+data = gui.actPick()
+if data == None: quit()
+elif data == "downloaded":
+    extractAll()
+    quit()
+
+
+
+#Select map pack GUI goes here
+try:
+    if type(data[1]) == list:
+        pass
 except:
-    packs[0] = gui.selBeatmap(OSUPATH)
-    if packs[0] == None: quit()
+    data.append(gui.selBeatmap())
+    if data[1] == None: quit()
 
 #Get the files and put them into their zip
 i = 0
-for zip in zips:
+for zip in data[0]:
     bmFinalPath = f"USER_BEATMAPS/{os.path.splitext(os.path.basename(zip.filename))[0]}"
 
     foundAudio = False
-    for fileName in os.listdir(packs[i]):
-        with open(os.path.join(OSUPATH, packs[i], fileName), "rb") as inFile:
+    for fileName in os.listdir(data[1][i]):
+        with open(os.path.join(OSUPATH, data[1][i], fileName), "rb") as inFile:
             rawContents = inFile.read()
 
             if ".osu" in fileName:
                 contentsList = rawContents.decode("utf-8").split("\r\n")
+                contentsList = [line for line in contentsList if line != ""]
 
                 for index, line in enumerate(contentsList):
                     if "AudioFilename:" in line:
@@ -89,8 +126,8 @@ for zip in zips:
 
 
     print("Converted!")
-
-    zip.extractall(os.path.join(GAMEDATAPATH, "UNBEATABLE [white label]_Data", "StreamingAssets", bmFinalPath))
     zip.close()
 
     i += 1
+
+extractAll()

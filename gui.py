@@ -3,19 +3,24 @@ import PySimpleGUI as sg
 import json
 import os
 import zipfile as zp
+import re
+import requests
 
 from PySimpleGUI.PySimpleGUI import LISTBOX_SELECT_MODE_EXTENDED, LISTBOX_SELECT_MODE_MULTIPLE, LISTBOX_SELECT_MODE_SINGLE
 
 
 ROOT = ""
 STRIPPIDCHARS = ""
+OSUPATH = ""
 
-def sendInfo(root, strippedChards):
+def sendInfo(root, strippedChards, osuPath):
     global ROOT
     global STRIPPIDCHARS
+    global OSUPATH
 
     ROOT = root
     STRIPPIDCHARS = strippedChards
+    OSUPATH = osuPath
 
 title = "TacoDog MC" #MC stands for "mod creator"
 sg.theme("Topanga")
@@ -31,14 +36,16 @@ def ourStrip(strIn):
 
 
 #Action to pick if you want to create a mod or edit one
-def actPick(OSUPATH):
+def actPick():
     #Window to pick between creating a mod or editing one
     firstWin = sg.Window(title, [
 
         [sg.B("Create package", size=size)      ],
         [sg.B("Edit package", size=size)        ],
         [sg.T()                                 ],
-        [sg.B("Bulk make package", size=size)   ]
+        [sg.B("Bulk make package", size=size)   ],
+        [sg.T()                                 ],
+        [sg.B("Download packages", size=size)   ]
 
     ], element_justification="c", resizable=True)
 
@@ -63,7 +70,7 @@ def actPick(OSUPATH):
                     createWin.close()
                     firstWin.close()
 
-                    return (zp.ZipFile(f"modfiles/{v2['name']}.bmap", "w", compression=zp.ZIP_LZMA))
+                    return [[zp.ZipFile(f"modfiles/{v2['name']}.bmap", "w", compression=zp.ZIP_LZMA)]]
 
                 elif e2 == sg.WINDOW_CLOSED:
                     createWin.close()
@@ -94,12 +101,12 @@ def actPick(OSUPATH):
 
                 if e2 == "Edit":
                     try:
-                        zips = (zp.ZipFile(f"modfiles/{v2['modSelected'][0]}", "w"))
+                        data = [zp.ZipFile(f"modfiles/{v2['modSelected'][0]}", "w")]
                         
                         editWin.close()
                         firstWin.close()
 
-                        return zips
+                        return [data]
                     except:
                         pass
 
@@ -140,13 +147,60 @@ def actPick(OSUPATH):
                         editWin.close()
                         firstWin.close()
 
-                        return ([zp.ZipFile(f"modfiles/{ourStrip(beatmap)}.bmap", "w", compression=zp.ZIP_LZMA) for beatmap in beatmaps], beatmapPaths)
+                        return [[zp.ZipFile(f"modfiles/{ourStrip(beatmap)}.bmap", "w", compression=zp.ZIP_LZMA) for beatmap in beatmaps], beatmapPaths]
                     except:
                         pass
 
                 elif e2 == sg.WINDOW_CLOSED:
                     editWin.close()
                     break
+
+        elif e1 == "Download packages":
+            #Select package window
+            response = requests.get("https://drive.google.com/uc?export=download&id=1mdqjkS2JKSpTmDMC-qp6wpuFgvMAvh1N")
+            IDs = json.loads(response.content.decode("utf-8"))
+
+            titles = []
+            for t in IDs:
+                titles.append(os.path.splitext(t)[0])
+
+            packWin = sg.Window(title, [
+
+                [sg.T("Please select a package")                                                            ],
+                [sg.LB(titles, size=size, key="packageSelected", select_mode=LISTBOX_SELECT_MODE_EXTENDED)  ],
+                [sg.B("Download", size=size)                                                                ]
+                
+
+            ], element_justification="c", modal=True, resizable=True, finalize=True)
+            packWin.bind('<Configure>', "Configure")
+
+            while True:
+                e2, v2 = packWin.read()
+                try:
+                    packWin["packageSelected"].expand(expand_x=True, expand_y=True)
+                except:
+                    pass
+
+
+                if e2 == "Download":
+                    try:
+                        packWin.close()
+
+                        for t in v2['packageSelected']:
+                            response = requests.get(f"https://drive.google.com/uc?export=download&id={IDs[t + '.bmap']}")
+
+                            fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
+                            open(os.path.join("modfiles", fname), "wb").write(response.content)
+
+                            print("Downloaded " + fname)
+
+                        return "downloaded"
+                    except:
+                        pass
+
+                elif e2 == sg.WINDOW_CLOSED:
+                    packWin.close()
+                    return
 
         elif e1 == sg.WINDOW_CLOSED: 
             firstWin.close()
@@ -155,7 +209,7 @@ def actPick(OSUPATH):
 
 
 #Select beatmap window
-def selBeatmap(OSUPATH):
+def selBeatmap():
     #Select beatmap window
     for _, dirs, _ in os.walk(OSUPATH):
         songs = dirs
@@ -182,7 +236,8 @@ def selBeatmap(OSUPATH):
         if e1 == "Convert":
             try:
                 beatWin.close()
-                return v1['songSelected']
+                if v1['songSelected'] == []: return
+                return [os.path.join(OSUPATH, beatmap) for beatmap in v1['songSelected']]
             except:
                 pass
 

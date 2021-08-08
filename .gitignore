@@ -2,3 +2,4 @@
 __pycache__
 modfiles
 config.json
+client_secrets.json
