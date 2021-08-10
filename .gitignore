@@ -3,4 +3,4 @@ __pycache__
 modfiles
 config.json
 client_secrets.json
-pull.py
+discord_bot.py
