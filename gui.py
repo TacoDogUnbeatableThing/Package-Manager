@@ -12,15 +12,18 @@ from PySimpleGUI.PySimpleGUI import LISTBOX_SELECT_MODE_EXTENDED, LISTBOX_SELECT
 ROOT = ""
 STRIPPIDCHARS = ""
 OSUPATH = ""
+IDS = {}
 
-def sendInfo(root, strippedChards, osuPath):
+def sendInfo(root, strippedChards, osuPath, IDs):
     global ROOT
     global STRIPPIDCHARS
     global OSUPATH
+    global IDS
 
     ROOT = root
     STRIPPIDCHARS = strippedChards
     OSUPATH = osuPath
+    IDS = IDs
 
 title = "TacoDog MC" #MC stands for "mod creator"
 sg.theme("Topanga")
@@ -157,11 +160,8 @@ def actPick():
 
         elif e1 == "Download packages":
             #Select package window
-            response = requests.get("https://drive.google.com/uc?export=download&id=1mdqjkS2JKSpTmDMC-qp6wpuFgvMAvh1N")
-            IDs = json.loads(response.content.decode("utf-8"))
-
             titles = []
-            for t in IDs:
+            for t in IDS:
                 titles.append(os.path.splitext(t)[0])
 
             packWin = sg.Window(title, [
@@ -187,7 +187,7 @@ def actPick():
                         packWin.close()
 
                         for t in v2['packageSelected']:
-                            response = requests.get(f"https://drive.google.com/uc?export=download&id={IDs[t + '.bmap']}")
+                            response = requests.get(f"https://drive.google.com/uc?export=download&id={IDS[t + '.bmap']}")
 
                             fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
                             open(os.path.join("modfiles", fname), "wb").write(response.content)

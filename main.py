@@ -4,34 +4,12 @@ import gui
 import os
 import zipfile as zp
 import json
-import re
 import requests
 
 
-#Code for getting all IDs, don't leave this in final build
-'''
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
-
-gauth = GoogleAuth()
-gauth.LocalWebserverAuth()
-
-drive = GoogleDrive(gauth)
-
-#UB Maps file ID: 1kmDCpmWQTIZRqhcvKsqzm4oZf2z6-mp5
-fileList = drive.ListFile({'q': "'1kmDCpmWQTIZRqhcvKsqzm4oZf2z6-mp5' in parents and trashed=false"}).GetList()
-IDs = {}
-
-for file in fileList:
-    IDs[file["title"]] = file["id"]
-
-with open("IDs.json", "wt") as file:
-    json.dump(IDs, file, indent=4)
-
-quit()
-'''
-
-#IDs id: 1mdqjkS2JKSpTmDMC-qp6wpuFgvMAvh1N
+#Get IDs
+response = requests.get("https://api.github.com/gists/12d74aacfc4eee259216284c78117ca0")
+IDS = json.loads(response.json()["files"]["IDs.json"]["content"])
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 STRIPPIDCHARS = "_- .[]()"
@@ -72,7 +50,7 @@ def extractAll():
 
 
 
-gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH)
+gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH, IDS)
 
 data = gui.actPick()
 if data == None: quit()
