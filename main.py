@@ -6,10 +6,18 @@ import zipfile as zp
 import json
 import requests
 
+from pymongo import MongoClient
+
 
 #Get IDs
-response = requests.get("https://api.github.com/gists/12d74aacfc4eee259216284c78117ca0")
-IDS = json.loads(response.json()["files"]["IDs.json"]["content"])
+#response = requests.get("https://api.github.com/gists/12d74aacfc4eee259216284c78117ca0")
+#IDS = json.loads(response.json()["files"]["IDs.json"]["content"])
+CONNECTION_STRING = f"mongodb+srv://user:dURWwuARJFZ8tO7F@ub-package-index.vpkkp.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+
+dbClient = MongoClient(CONNECTION_STRING)
+DBINDEX = dbClient["UB-Database"]["Index"]
+
+
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 STRIPPIDCHARS = "_- .[]()"
@@ -50,7 +58,7 @@ def extractAll():
 
 
 
-gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH, IDS)
+gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH, DBINDEX)
 
 data = gui.actPick()
 if data == None: quit()

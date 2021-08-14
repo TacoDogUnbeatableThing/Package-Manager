@@ -5,6 +5,7 @@ import os
 import zipfile as zp
 import re
 import requests
+from pymongo import MongoClient
 
 from PySimpleGUI.PySimpleGUI import LISTBOX_SELECT_MODE_EXTENDED, LISTBOX_SELECT_MODE_MULTIPLE, LISTBOX_SELECT_MODE_SINGLE
 
@@ -12,18 +13,18 @@ from PySimpleGUI.PySimpleGUI import LISTBOX_SELECT_MODE_EXTENDED, LISTBOX_SELECT
 ROOT = ""
 STRIPPIDCHARS = ""
 OSUPATH = ""
-IDS = {}
+DBINDEX = {}
 
-def sendInfo(root, strippedChards, osuPath, IDs):
+def sendInfo(root, strippedChards, osuPath, dbIndex):
     global ROOT
     global STRIPPIDCHARS
     global OSUPATH
-    global IDS
+    global DBINDEX
 
     ROOT = root
     STRIPPIDCHARS = strippedChards
     OSUPATH = osuPath
-    IDS = IDs
+    DBINDEX = dbIndex
 
 title = "TacoDog MC" #MC stands for "mod creator"
 sg.theme("Topanga")
@@ -161,8 +162,8 @@ def actPick():
         elif e1 == "Download packages":
             #Select package window
             titles = []
-            for t in IDS:
-                titles.append(os.path.splitext(t)[0])
+            for t in DBINDEX.find():
+                titles.append(os.path.splitext(t["name"])[0])
 
             packWin = sg.Window(title, [
 
@@ -183,20 +184,21 @@ def actPick():
 
 
                 if e2 == "Download":
-                    try:
-                        packWin.close()
+                    packWin.close()
 
-                        for t in v2['packageSelected']:
-                            response = requests.get(f"https://drive.google.com/uc?export=download&id={IDS[t + '.bmap']}")
+                    for t in v2['packageSelected']:
+                        for bm in DBINDEX.find():
+                            if t + ".bmap" == bm["name"]:
+                                response = requests.get(f"https://drive.google.com/uc?export=download&id={bm['file_id']}")
+                                fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
+                                open(os.path.join("modfiles", fname), "wb").write(response.content)
 
-                            fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
-                            open(os.path.join("modfiles", fname), "wb").write(response.content)
+                                print("Downloaded " + fname)
 
-                            print("Downloaded " + fname)
+                                break
 
-                        return "downloaded"
-                    except:
-                        pass
+                    return "downloaded"
+
 
                 elif e2 == sg.WINDOW_CLOSED:
                     packWin.close()
