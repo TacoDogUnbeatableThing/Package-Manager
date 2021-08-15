@@ -2,5 +2,3 @@
 __pycache__
 modfiles
 config.json
-client_secrets.json
-discord_bot.py
