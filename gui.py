@@ -1,13 +1,14 @@
-from typing import final
+import main
+
 import PySimpleGUI as sg
+from PySimpleGUI.PySimpleGUI import LISTBOX_SELECT_MODE_EXTENDED, LISTBOX_SELECT_MODE_SINGLE
+
 import json
 import os
 import zipfile as zp
-import re
 import requests
-from pymongo import MongoClient
+import re
 
-from PySimpleGUI.PySimpleGUI import LISTBOX_SELECT_MODE_EXTENDED, LISTBOX_SELECT_MODE_MULTIPLE, LISTBOX_SELECT_MODE_SINGLE
 
 
 ROOT = ""
@@ -137,11 +138,12 @@ def actPick():
 
                 if e2 == "Bulk make":
                     try:
+                        main.extractAll(v2['folderInput'], v2['folderInput'])
+
                         beatmapPaths = []
                         for path, _, _ in os.walk(v2['folderInput']):
-                            if path == v2['folderInput']:
-                                continue
-                            beatmapPaths.append(path)
+                            if path != v2['folderInput']:
+                                beatmapPaths.append(path)
 
                         beatmaps = []
                         for _, dirs, _ in os.walk(v2['folderInput']):
@@ -198,19 +200,19 @@ def actPick():
 
                     for t in v2['packageSelected']:
                         for bm in DBINDEX.find({"name": t}):
-                            del bm["_id"]
-
                             response = requests.get(f"https://drive.google.com/uc?export=download&id={bm['file_id']}")
+                            fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
 
-                            bmFilePath = os.path.join("modfiles", bm['file_id'] + ".bmap")
+                            bmFilePath = os.path.join("modfiles", fname)
                             open(bmFilePath, "wb").write(response.content)
 
+                            del bm["_id"]
+                            del bm["file_id"]
                             with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
                                 with zip.open("info.json", "w") as infoFile:
                                     infoFile.write(json.dumps(bm, indent=4).encode("utf-8"))
 
-
-                            print("Downloaded " + bm['file_id'])
+                            print("Downloaded " + fname)
                             break
 
                     return "downloaded"
