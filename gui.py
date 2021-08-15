@@ -105,7 +105,7 @@ def actPick():
 
                 if e2 == "Edit":
                     try:
-                        data = [zp.ZipFile(f"modfiles/{v2['modSelected'][0]}", "w")]
+                        data = [zp.ZipFile(f"modfiles/{v2['modSelected'][0]}", "w", compression=zp.ZIP_LZMA)]
                         
                         editWin.close()
                         firstWin.close()
@@ -161,15 +161,13 @@ def actPick():
 
         elif e1 == "Download packages":
             #Select package window
-            titles = []
-            for t in DBINDEX.find():
-                titles.append(os.path.splitext(t["name"])[0])
-
             packWin = sg.Window(title, [
 
-                [sg.T("Please select a package")                                                            ],
-                [sg.LB(titles, size=size, key="packageSelected", select_mode=LISTBOX_SELECT_MODE_EXTENDED)  ],
-                [sg.B("Download", size=size)                                                                ]
+                [sg.T("Please select a package")                                                                                        ],
+                [sg.Input(key="input"), sg.Combo(["Name", "Artist"], default_value="Name", size=size, key="searchType")                 ],
+                [sg.B("Search", bind_return_key=True, size=size)                                                                        ],
+                [sg.LB([t["name"] for t in DBINDEX.find()], size=size, key="packageSelected", select_mode=LISTBOX_SELECT_MODE_EXTENDED) ],
+                [sg.B("Download", size=size)                                                                                            ]
                 
 
             ], element_justification="c", modal=True, resizable=True, finalize=True)
@@ -183,19 +181,37 @@ def actPick():
                     pass
 
 
-                if e2 == "Download":
+                if e2 == "Search":
+                    if v2["input"] != "":
+                        titles = [t["name"] for t in DBINDEX.aggregate([
+                            {"$search": {"text": {"query": v2["input"],"path": v2["searchType"].lower()}}}])
+                        ]
+                    else:
+                        titles = [t["name"] for t in DBINDEX.find()]
+
+                    v2['packageSelected'] = []
+                    packWin.FindElement("packageSelected").Update(values=titles)
+
+
+                elif e2 == "Download":
                     packWin.close()
 
                     for t in v2['packageSelected']:
-                        for bm in DBINDEX.find():
-                            if t + ".bmap" == bm["name"]:
-                                response = requests.get(f"https://drive.google.com/uc?export=download&id={bm['file_id']}")
-                                fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
-                                open(os.path.join("modfiles", fname), "wb").write(response.content)
+                        for bm in DBINDEX.find({"name": t}):
+                            del bm["_id"]
 
-                                print("Downloaded " + fname)
+                            response = requests.get(f"https://drive.google.com/uc?export=download&id={bm['file_id']}")
 
-                                break
+                            bmFilePath = os.path.join("modfiles", bm['file_id'] + ".bmap")
+                            open(bmFilePath, "wb").write(response.content)
+
+                            with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
+                                with zip.open("info.json", "w") as infoFile:
+                                    infoFile.write(json.dumps(bm, indent=4).encode("utf-8"))
+
+
+                            print("Downloaded " + bm['file_id'])
+                            break
 
                     return "downloaded"
 
