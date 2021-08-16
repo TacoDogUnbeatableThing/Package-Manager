@@ -15,17 +15,20 @@ ROOT = ""
 STRIPPIDCHARS = ""
 OSUPATH = ""
 DBINDEX = {}
+GAMEDATAPATH = ""
 
-def sendInfo(root, strippedChards, osuPath, dbIndex):
+def sendInfo(root, strippedChards, osuPath, dbIndex, gameDataPath):
     global ROOT
     global STRIPPIDCHARS
     global OSUPATH
     global DBINDEX
+    global GAMEDATAPATH
 
     ROOT = root
     STRIPPIDCHARS = strippedChards
     OSUPATH = osuPath
     DBINDEX = dbIndex
+    GAMEDATAPATH = gameDataPath
 
 title = "TacoDog MC" #MC stands for "mod creator"
 sg.theme("Topanga")
@@ -168,7 +171,7 @@ def actPick():
                 [sg.T("Please select a package")                                                                                        ],
                 [sg.Input(key="input"), sg.Combo(["Name", "Artist"], default_value="Name", size=size, key="searchType")                 ],
                 [sg.B("Search", bind_return_key=True, size=size)                                                                        ],
-                [sg.LB([t["name"] for t in DBINDEX.find()], size=size, key="packageSelected", select_mode=LISTBOX_SELECT_MODE_EXTENDED) ],
+                [sg.LB([], size=size, key="packageSelected", select_mode=LISTBOX_SELECT_MODE_EXTENDED) ],
                 [sg.B("Download", size=size)                                                                                            ]
                 
 
@@ -184,36 +187,59 @@ def actPick():
 
 
                 if e2 == "Search":
+                    selectableOptions = {}
                     if v2["input"] != "":
-                        titles = [t["name"] for t in DBINDEX.aggregate([
-                            {"$search": {"text": {"query": v2["input"],"path": v2["searchType"].lower()}}}])
-                        ]
+                        for t in DBINDEX.aggregate([{"$search": {"text": {"query": v2["input"],"path": v2["searchType"].lower()}}}]):
+                            selectableOptions[f"{t['name']} by {t['artist']}"] = t
                     else:
-                        titles = [t["name"] for t in DBINDEX.find()]
+                        for t in DBINDEX.find():
+                            selectableOptions[f"{t['name']} by {t['artist']}"] = t
+
+                    downloadedMaps = []
+                    for path, dirs, files in os.walk(os.path.join(GAMEDATAPATH, "UNBEATABLE [white label]_Data", "StreamingAssets", "USER_BEATMAPS")):
+                        for file in files:
+                            if file == "info.json":
+                                with open(os.path.join(path, file), "r") as info:
+                                    downloadedMaps.append(json.load(info)["file_id"])
+
+                    for i in list(selectableOptions):
+                        for fileID in downloadedMaps:
+                            if selectableOptions[i]["file_id"] == fileID:
+                                key = i + " --- DOWNLOADED"
+                                selectableOptions[key] = selectableOptions[i]
+                                selectableOptions[key]["downloaded"] = True
+
+                                del selectableOptions[i]
+                                break
 
                     v2['packageSelected'] = []
-                    packWin.FindElement("packageSelected").Update(values=titles)
+                    packWin.FindElement("packageSelected").Update(values=[i for i in selectableOptions])
 
 
                 elif e2 == "Download":
                     packWin.close()
 
-                    for t in v2['packageSelected']:
-                        for bm in DBINDEX.find({"name": t}):
-                            response = requests.get(f"https://drive.google.com/uc?export=download&id={bm['file_id']}")
-                            fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
+                    for t in v2["packageSelected"]:
+                        try:
+                            if selectableOptions[t]["downloaded"]:
+                                continue
+                        except:
+                            pass
 
-                            bmFilePath = os.path.join("modfiles", fname)
-                            open(bmFilePath, "wb").write(response.content)
+                        bm = selectableOptions[t]
 
-                            del bm["_id"]
-                            del bm["file_id"]
-                            with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
-                                with zip.open("info.json", "w") as infoFile:
-                                    infoFile.write(json.dumps(bm, indent=4).encode("utf-8"))
+                        response = requests.get(f"https://drive.google.com/uc?export=download&id={bm['file_id']}")
+                        fname = re.findall("filename=\"(.+)\"", response.headers['content-disposition'])[0]
 
-                            print("Downloaded " + fname)
-                            break
+                        bmFilePath = os.path.join("modfiles", fname)
+                        open(bmFilePath, "wb").write(response.content)
+
+                        del bm["_id"]
+                        with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
+                            with zip.open("info.json", "w") as infoFile:
+                                infoFile.write(json.dumps(bm, indent=4).encode("utf-8"))
+
+                        print("Downloaded " + fname)
 
                     return "downloaded"
 

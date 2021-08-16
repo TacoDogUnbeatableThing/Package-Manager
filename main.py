@@ -97,7 +97,7 @@ def convertFileForPackage(inFile, fileName, zip, zipFileName):
 
 
 def main():
-    gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH, DBINDEX)
+    gui.sendInfo(ROOT, STRIPPIDCHARS, OSUPATH, DBINDEX, GAMEDATAPATH)
 
     data = gui.actPick()
     if data == None: quit()
