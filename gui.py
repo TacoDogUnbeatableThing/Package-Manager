@@ -234,6 +234,8 @@ def actPick():
                         bmFilePath = os.path.join("modfiles", fname)
                         open(bmFilePath, "wb").write(response.content)
 
+                        response.close()
+
                         del bm["_id"]
                         with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
                             with zip.open("info.json", "w") as infoFile:
