@@ -237,9 +237,9 @@ def actPick():
                         response.close()
 
                         del bm["_id"]
-                        with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
-                            with zip.open("info.json", "w") as infoFile:
-                                infoFile.write(json.dumps(bm, indent=4).encode("utf-8"))
+                        #with zp.ZipFile(bmFilePath, "a", compression=zp.ZIP_LZMA) as zip:
+                            #with zip.open("info.json", "w") as infoFile:
+                                #infoFile.write(json.dumps(bm, indent=4).encode("utf-8"))
 
                         print("Downloaded " + fname)
 
